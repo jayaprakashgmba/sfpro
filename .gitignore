@@ -1,0 +1,12 @@
+# Salesforce specific
+.sfdx/
+*.json
+*.log
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Node specific (if using Node.js)
+node_modules/
+package-lock.json
