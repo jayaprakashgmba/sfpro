@@ -3,7 +3,7 @@ name: Deploy to Salesforce (src  format)
 on:
   pull_request:
     branches:
-      - Devopstest
+      - main
 jobs:
   SFDX-CLI-Deploy:
     runs-on: ubuntu-latest
@@ -51,7 +51,7 @@ jobs:
       - name: Install sfdxGitDelta
         run: |
           echo y | sf plugins install sfdx-git-delta
-      - name: Generate Delta between QA and PR Branch
+      - name: Generate Delta between main and PR Branch
         run: >
           # Generate the delta changes between the base branch and the head of the PR
 
