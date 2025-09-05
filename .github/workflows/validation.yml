@@ -34,7 +34,7 @@ jobs:
         run: >
           echo "${{ secrets.SFDX_AUTH_URL }}" > sfdx-auth-url.txt
 
-          sf org login sfdx-url --sfdx-url-file sfdx-auth-url.txt --alias devops1 --set-default
+          sf org login sfdx-url --sfdx-url-file sfdx-auth-url.txt --alias augsanbox --set-default
       - name: Debug Test Classes File
         run: cat test-classes.txt
       - name: Read Test Class Names from File
