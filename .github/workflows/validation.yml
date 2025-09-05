@@ -83,18 +83,18 @@ jobs:
         run: |
           if [ "${{ env.RUN_TESTS }}" == "true" ]; then
           echo "Running specified tests: ${{ env.TEST_CLASSES }}"
-          sf project deploy validate \
-            --manifest package/package.xml \
-            --test-level RunSpecifiedTests \
-            --tests "${{ env.TEST_CLASSES }}" \
-            --target-org $TARGET_ORG \
-            --api-version 61.0
-           else
+            sf project deploy validate \
+                --manifest package/package.xml \
+                --test-level RunSpecifiedTests \
+                --tests "${{ env.TEST_CLASSES }}" \
+                --target-org $TARGET_ORG \
+                --api-version 61.0
+            else
             echo "No test classes specified. Running all local tests to deploy other components."
-          sf project deploy validate \
-            --manifest package/package.xml \
-            --test-level RunLocalTests \
-            --target-org $TARGET_ORG \
-            --api-version 61.0
+            sf project deploy validate \
+                --manifest package/package.xml \
+                --test-level RunLocalTests \
+                --target-org $TARGET_ORG \
+                --api-version 61.0
             fi
 
