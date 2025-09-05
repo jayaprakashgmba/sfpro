@@ -12,10 +12,10 @@ jobs:
         with:
           node-version: "20"
       - run: echo "🐧 GitHub Action running on ${{ runner.os }}"
-      - run: echo "🔎 Retrieving QA Branch from ${{ github.repository }}."
+      - run: echo "🔎 Retrieving uat Branch from ${{ github.repository }}."
       - uses: actions/checkout@v4
         with:
-          ref: Devopstest
+          ref: ${{ github.head_ref }}
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
