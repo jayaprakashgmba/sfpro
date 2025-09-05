@@ -67,21 +67,22 @@ jobs:
         run: |
           echo "TEST_CLASSES=${{ env.TEST_CLASSES }}"
           echo "RUN_TESTS=${{ env.RUN_TESTS }}"
-      - name: Validate Delta Components with Specified Tests
+      - name: Validate Delta Components with Tests Handling
         run: |
-         if [ "${{ env.RUN_TESTS }}" == "true" ]; then
-         echo "Running specified tests: ${{ env.TEST_CLASSES }}"
-         sf project deploy validate \
-         --manifest package/package.xml \
-         --test-level RunSpecifiedTests \
-         --tests ${{ env.TEST_CLASSES }} \
-         --target-org uat \
-         --api-version 61.0
-         else
-           echo "No test classes specified. Deploying/validating all components without tests."
-           sf project deploy validate \
-           --manifest package/package.xml \
-           --test-level NoTestRun \
-           --target-org uat \
-           --api-version 61.0
-         fi
+            if [ "${{ env.RUN_TESTS }}" == "true" ]; then
+            echo "Running specified tests: ${{ env.TEST_CLASSES }}"
+            sf project deploy validate \
+                --manifest package/package.xml \
+                --test-level RunSpecifiedTests \
+                --tests ${{ env.TEST_CLASSES }} \
+                --target-org qa \
+                --api-version 61.0
+            else
+            echo "No test classes specified. Running all local tests to deploy other components."
+            sf project deploy validate \
+                --manifest package/package.xml \
+                --test-level RunLocalTests \
+                --target-org qa \
+                --api-version 61.0
+            fi
+
