@@ -1,0 +1,2 @@
+*.cls-meta.xml
+*.trigger-meta.xml
