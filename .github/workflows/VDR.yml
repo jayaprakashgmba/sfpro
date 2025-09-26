@@ -1,4 +1,4 @@
-name: PR Validation, Deployment & Auto-Rollback for Salesforce
+name: PR Validation & Deployment for Salesforce
 
 on:
   push:
@@ -6,163 +6,59 @@ on:
       - uat
 
 jobs:
-  validate:
+  validate-and-deploy:
     runs-on: ubuntu-latest
     steps:
+      # Checkout code
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # Setup Node.js 20 for the entire job
       - name: Setup Node.js 20
         uses: actions/setup-node@v3
         with:
           node-version: '20'
 
+      # Set environment variable to force Salesforce CLI to use system Node
+      - name: Use system Node for Salesforce CLI
+        run: echo "SF_USE_SYSTEM_NODE=true" >> $GITHUB_ENV
+
+      # Setup Salesforce CLI
       - name: Set up Salesforce CLI
         uses: sfdx-actions/setup-sfdx@v1
         with:
           version: latest
 
+      # Authenticate to Salesforce
       - name: Authenticate to Salesforce
         run: |
           echo "${{ secrets.SFDX_AUTH_URL }}" > sfdx-auth-url.txt
           sfdx auth:sfdxurl:store --sfdx-url-file sfdx-auth-url.txt -a qa-org -d
 
+      # Install sfdx-git-delta (only once)
       - name: Install sfdx-git-delta
         run: |
-          # Ensure Salesforce CLI uses system Node (Node 20)
-          export SF_USE_SYSTEM_NODE=true
           echo y | sf plugins install sfdx-git-delta
 
-      - name: Generate Delta & Rollback Packages
+      # Generate Delta Package
+      - name: Generate Delta Package
         run: |
-          export SF_USE_SYSTEM_NODE=true
           sf sgd:source:delta --to "HEAD" --from "HEAD~1" --output "delta" --ignore .github/workflows/ignore.txt
-          sf sgd:source:delta --to "HEAD~1" --from "HEAD" --output "rollback" --ignore .github/workflows/ignore.txt
-          echo "Rollback package generated ✅"
+          echo "Delta package generated ✅"
 
-      - name: Upload rollback artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: rollback-package
-          path: rollback/
-
-      - name: Validate Metadata (check-only)
+      # Validate Metadata (check-only)
+      - name: Validate Metadata
         run: |
-          export SF_USE_SYSTEM_NODE=true
           sfdx force:source:deploy \
             --checkonly \
             --manifest delta/package/package.xml \
             --targetusername qa-org \
             --testlevel RunLocalTests
 
-  notify-approval:
-    runs-on: ubuntu-latest
-    needs: validate
-    steps:
-      - name: Send MS Teams Notification
-        run: |
-          curl -H 'Content-Type: application/json' \
-          -d '{
-                "@type": "MessageCard",
-                "@context": "http://schema.org/extensions",
-                "summary": "Salesforce Deployment Pending Approval",
-                "themeColor": "0076D7",
-                "title": "🚦 Salesforce Deployment Pending Approval",
-                "text": "Deployment to **UAT** is ready. Manual approval required in GitHub Actions.\n👉 [Approve here](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})",
-                "sections": [{
-                  "activityTitle": "Triggered by: ${{ github.actor }}",
-                  "activitySubtitle": "Branch: ${{ github.ref }}"
-                }]
-              }' \
-          ${{ secrets.NOTIFICATION_WEBHOOK }}
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: [validate, notify-approval]
-    environment:
-      name: qa-deploy
-      url: https://test.salesforce.com
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-
-      - name: Set up Salesforce CLI
-        uses: sfdx-actions/setup-sfdx@v1
-        with:
-          version: latest
-
-      - name: Authenticate to Salesforce
-        run: |
-          echo "${{ secrets.SFDX_AUTH_URL }}" > sfdx-auth-url.txt
-          sfdx auth:sfdxurl:store --sfdx-url-file sfdx-auth-url.txt -a qa-org -d
-
+      # Deploy Metadata to QA
       - name: Deploy Metadata to QA
         run: |
-          export SF_USE_SYSTEM_NODE=true
           sfdx force:source:deploy \
             --manifest delta/package/package.xml \
             --targetusername qa-org \
             --testlevel RunLocalTests
-
-  rollback:
-    runs-on: ubuntu-latest
-    needs: deploy
-    if: failure()   # Auto-run only if deploy fails
-    steps:
-      - name: Download rollback artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: rollback-package
-          path: rollback/
-
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-
-      - name: Set up Salesforce CLI
-        uses: sfdx-actions/setup-sfdx@v1
-        with:
-          version: latest
-
-      - name: Authenticate to Salesforce
-        run: |
-          echo "${{ secrets.SFDX_AUTH_URL }}" > sfdx-auth-url.txt
-          sfdx auth:sfdxurl:store --sfdx-url-file sfdx-auth-url.txt -a qa-org -d
-
-      - name: Rollback Deployment
-        run: |
-          export SF_USE_SYSTEM_NODE=true
-          echo "🚨 Deployment failed — running rollback..."
-          sfdx force:source:deploy \
-            --manifest rollback/package/package.xml \
-            --targetusername qa-org \
-            --testlevel RunLocalTests
-          echo "✅ Rollback completed"
-
-  notify-rollback:
-    runs-on: ubuntu-latest
-    needs: rollback
-    if: success()
-    steps:
-      - name: Notify MS Teams about rollback
-        run: |
-          curl -H 'Content-Type: application/json' \
-          -d '{
-                "@type": "MessageCard",
-                "@context": "http://schema.org/extensions",
-                "summary": "Salesforce Deployment Rolled Back",
-                "themeColor": "FF0000",
-                "title": "⚠️ Salesforce Deployment Rolled Back",
-                "text": "Deployment failed and rollback to previous state was automatically executed.",
-                "sections": [{
-                  "activityTitle": "Triggered by: ${{ github.actor }}",
-                  "activitySubtitle": "Branch: ${{ github.ref }}"
-                }]
-              }' \
-          ${{ secrets.NOTIFICATION_WEBHOOK }}
