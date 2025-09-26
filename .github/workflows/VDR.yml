@@ -17,38 +17,41 @@ jobs:
       - name: Setup Node.js 20
         uses: actions/setup-node@v3
         with:
-            node-version: '20'
+          node-version: '20'
 
-        - name: Force Salesforce CLI to use system Node
+      # Force Salesforce CLI to use system Node for all steps
+      - name: Use system Node for Salesforce CLI
         run: echo "SF_USE_SYSTEM_NODE=true" >> $GITHUB_ENV
 
-        - name: Install Salesforce CLI
-          run: |
-            npm install -g sfdx-cli
+      # Install Salesforce CLI via npm (uses system Node 20)
+      - name: Install Salesforce CLI
+        run: npm install -g sfdx-cli
 
-        - name: Install sfdx-git-delta
-          run: echo y | sf plugins install sfdx-git-delta
+      # Authenticate to Salesforce
+      - name: Authenticate to Salesforce
+        run: |
+          echo "${{ secrets.SFDX_AUTH_URL }}" > sfdx-auth-url.txt
+          sfdx auth:sfdxurl:store --sfdx-url-file sfdx-auth-url.txt -a qa-org -d
 
+      # Install sfdx-git-delta plugin
+      - name: Install sfdx-git-delta
+        run: echo y | sf plugins install sfdx-git-delta
 
       # Generate Delta Package
       - name: Generate Delta Package
-        run: |
-          SF_USE_SYSTEM_NODE=true sf sgd:source:delta --to "HEAD" --from "HEAD~1" --output "delta" --ignore .github/workflows/ignore.txt
-          echo "Delta package generated ✅"
+        run: sf sgd:source:delta --to "HEAD" --from "HEAD~1" --output "delta" --ignore .github/workflows/ignore.txt
 
       # Validate Metadata (check-only)
       - name: Validate Metadata
-        run: |
-          SF_USE_SYSTEM_NODE=true sfdx force:source:deploy \
-            --checkonly \
-            --manifest delta/package/package.xml \
-            --targetusername qa-org \
-            --testlevel RunLocalTests
+        run: sfdx force:source:deploy \
+              --checkonly \
+              --manifest delta/package/package.xml \
+              --targetusername qa-org \
+              --testlevel RunLocalTests
 
       # Deploy Metadata to QA
       - name: Deploy Metadata to QA
-        run: |
-          SF_USE_SYSTEM_NODE=true sfdx force:source:deploy \
-            --manifest delta/package/package.xml \
-            --targetusername qa-org \
-            --testlevel RunLocalTests
+        run: sfdx force:source:deploy \
+              --manifest delta/package/package.xml \
+              --targetusername qa-org \
+              --testlevel RunLocalTests
