@@ -1,7 +1,7 @@
 name: PR Validation, Deployment & Auto-Rollback for Salesforce
 
 on:
-  pull_request:
+  push:
     branches:
       - uat
 
