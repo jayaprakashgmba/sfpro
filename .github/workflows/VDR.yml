@@ -38,7 +38,9 @@ jobs:
       # Install sfdx-git-delta (only once)
       - name: Install sfdx-git-delta
         run: |
-          echo y | sf plugins install sfdx-git-delta
+         export SF_USE_SYSTEM_NODE=true
+         echo y | sf plugins install sfdx-git-delta
+
 
       # Generate Delta Package
       - name: Generate Delta Package
