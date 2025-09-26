@@ -9,42 +9,47 @@ jobs:
   validate-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      # Checkout code
+      # 1️⃣ Checkout code
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Setup Node.js 20
+      # 2️⃣ Setup Node.js 20
       - name: Setup Node.js 20
         uses: actions/setup-node@v3
         with:
           node-version: '20'
 
-      # Force Salesforce CLI to use system Node
+      # 3️⃣ Force Salesforce CLI to use system Node
       - name: Use system Node for Salesforce CLI
         run: echo "SF_USE_SYSTEM_NODE=true" >> $GITHUB_ENV
 
-      # Install Salesforce CLI globally via npm and add global binaries to PATH
+      # 4️⃣ Install Salesforce CLI globally via npm
       - name: Install Salesforce CLI
-        run: |
-          npm install -g sfdx-cli
-          echo "PATH=$(npm bin -g):$PATH" >> $GITHUB_ENV
-          sf --version
+        run: npm install -g sfdx-cli
 
-      # Authenticate to Salesforce
+      # 5️⃣ Add npm global binaries to PATH for subsequent steps
+      - name: Add npm global binaries to PATH
+        run: echo "PATH=$(npm bin -g):$PATH" >> $GITHUB_ENV
+
+      # 6️⃣ Verify Salesforce CLI installation
+      - name: Check Salesforce CLI version
+        run: sf --version
+
+      # 7️⃣ Authenticate to Salesforce
       - name: Authenticate to Salesforce
         run: |
           echo "${{ secrets.SFDX_AUTH_URL }}" > sfdx-auth-url.txt
           sf auth:sfdxurl:store --sfdx-url-file sfdx-auth-url.txt -a qa-org -d
 
-      # Install sfdx-git-delta plugin
+      # 8️⃣ Install sfdx-git-delta plugin
       - name: Install sfdx-git-delta
         run: echo y | sf plugins install sfdx-git-delta
 
-      # Generate Delta Package
+      # 9️⃣ Generate Delta Package
       - name: Generate Delta Package
         run: sf sgd:source:delta --to "HEAD" --from "HEAD~1" --output "delta" --ignore .github/workflows/ignore.txt
 
-      # Validate Metadata (check-only)
+      # 🔟 Validate Metadata (check-only)
       - name: Validate Metadata
         run: sf force:source:deploy \
               --checkonly \
@@ -52,7 +57,7 @@ jobs:
               --targetusername qa-org \
               --testlevel RunLocalTests
 
-      # Deploy Metadata to QA
+      # 1️⃣1️⃣ Deploy Metadata to QA
       - name: Deploy Metadata to QA
         run: sf force:source:deploy \
               --manifest delta/package/package.xml \
