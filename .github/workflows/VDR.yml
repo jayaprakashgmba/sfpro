@@ -13,15 +13,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Setup Node.js 20 for the entire job
-      - name: Setup Node.js 18
+      # Setup Node.js 20
+      - name: Setup Node.js 20
         uses: actions/setup-node@v3
         with:
-          node-version: '18.15.0'
-
-      # Set environment variable to force Salesforce CLI to use system Node
-      - name: Use system Node for Salesforce CLI
-        run: echo "SF_USE_SYSTEM_NODE=true" >> $GITHUB_ENV
+          node-version: '20'
 
       # Setup Salesforce CLI
       - name: Set up Salesforce CLI
@@ -35,23 +31,21 @@ jobs:
           echo "${{ secrets.SFDX_AUTH_URL }}" > sfdx-auth-url.txt
           sfdx auth:sfdxurl:store --sfdx-url-file sfdx-auth-url.txt -a qa-org -d
 
-      # Install sfdx-git-delta (only once)
+      # Install sfdx-git-delta using system Node 20
       - name: Install sfdx-git-delta
         run: |
-         export SF_USE_SYSTEM_NODE=true
-         echo y | sf plugins install sfdx-git-delta
-
+          SF_USE_SYSTEM_NODE=true echo y | sf plugins install sfdx-git-delta
 
       # Generate Delta Package
       - name: Generate Delta Package
         run: |
-          sf sgd:source:delta --to "HEAD" --from "HEAD~1" --output "delta" --ignore .github/workflows/ignore.txt
+          SF_USE_SYSTEM_NODE=true sf sgd:source:delta --to "HEAD" --from "HEAD~1" --output "delta" --ignore .github/workflows/ignore.txt
           echo "Delta package generated ✅"
 
       # Validate Metadata (check-only)
       - name: Validate Metadata
         run: |
-          sfdx force:source:deploy \
+          SF_USE_SYSTEM_NODE=true sfdx force:source:deploy \
             --checkonly \
             --manifest delta/package/package.xml \
             --targetusername qa-org \
@@ -60,7 +54,7 @@ jobs:
       # Deploy Metadata to QA
       - name: Deploy Metadata to QA
         run: |
-          sfdx force:source:deploy \
+          SF_USE_SYSTEM_NODE=true sfdx force:source:deploy \
             --manifest delta/package/package.xml \
             --targetusername qa-org \
             --testlevel RunLocalTests
