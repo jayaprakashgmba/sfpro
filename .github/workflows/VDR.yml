@@ -12,6 +12,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
       - name: Set up Salesforce CLI
         uses: sfdx-actions/setup-sfdx@v1
         with:
@@ -22,7 +27,7 @@ jobs:
           echo "${{ secrets.SFDX_AUTH_URL }}" > sfdx-auth-url.txt
           sfdx auth:sfdxurl:store --sfdx-url-file sfdx-auth-url.txt -a qa-org -d
 
-      - name: Generate Delta & Rollback Packages
+      - name: Install sfdx-git-delta and Generate Delta & Rollback Packages
         run: |
           echo y | sf plugins install sfdx-git-delta
           # Generate deploy package (changes)
@@ -45,12 +50,41 @@ jobs:
             --targetusername qa-org \
             --testlevel RunLocalTests
 
-  deploy:
+  notify-approval:
     runs-on: ubuntu-latest
     needs: validate
     steps:
+      - name: Send MS Teams Notification
+        run: |
+          curl -H 'Content-Type: application/json' \
+          -d '{
+                "@type": "MessageCard",
+                "@context": "http://schema.org/extensions",
+                "summary": "Salesforce Deployment Pending Approval",
+                "themeColor": "0076D7",
+                "title": "🚦 Salesforce Deployment Pending Approval",
+                "text": "Deployment to **UAT** is ready. Manual approval required in GitHub Actions.\n👉 [Approve here](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})",
+                "sections": [{
+                  "activityTitle": "Triggered by: ${{ github.actor }}",
+                  "activitySubtitle": "Branch: ${{ github.ref }}"
+                }]
+              }' \
+          ${{ secrets.NOTIFICATION_WEBHOOK }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [validate, notify-approval]
+    environment:
+      name: qa-deploy
+      url: https://test.salesforce.com
+    steps:
       - name: Checkout code
         uses: actions/checkout@v3
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
 
       - name: Set up Salesforce CLI
         uses: sfdx-actions/setup-sfdx@v1
@@ -72,13 +106,18 @@ jobs:
   rollback:
     runs-on: ubuntu-latest
     needs: deploy
-    if: failure()   # 🚨 Auto-run only if deploy fails
+    if: failure()   # Auto-run only if deploy fails
     steps:
       - name: Download rollback artifact
         uses: actions/download-artifact@v4
         with:
           name: rollback-package
           path: rollback/
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
 
       - name: Set up Salesforce CLI
         uses: sfdx-actions/setup-sfdx@v1
@@ -98,3 +137,25 @@ jobs:
             --targetusername qa-org \
             --testlevel RunLocalTests
           echo "✅ Rollback completed"
+
+  notify-rollback:
+    runs-on: ubuntu-latest
+    needs: rollback
+    if: success()
+    steps:
+      - name: Notify MS Teams about rollback
+        run: |
+          curl -H 'Content-Type: application/json' \
+          -d '{
+                "@type": "MessageCard",
+                "@context": "http://schema.org/extensions",
+                "summary": "Salesforce Deployment Rolled Back",
+                "themeColor": "FF0000",
+                "title": "⚠️ Salesforce Deployment Rolled Back",
+                "text": "Deployment failed and rollback to previous state was automatically executed.",
+                "sections": [{
+                  "activityTitle": "Triggered by: ${{ github.actor }}",
+                  "activitySubtitle": "Branch: ${{ github.ref }}"
+                }]
+              }' \
+          ${{ secrets.NOTIFICATION_WEBHOOK }}
