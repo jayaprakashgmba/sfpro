@@ -17,24 +17,18 @@ jobs:
       - name: Setup Node.js 20
         uses: actions/setup-node@v3
         with:
-          node-version: '20'
+            node-version: '20'
 
-      # Setup Salesforce CLI
-      - name: Set up Salesforce CLI
-        uses: sfdx-actions/setup-sfdx@v1
-        with:
-          version: latest
+        - name: Force Salesforce CLI to use system Node
+        run: echo "SF_USE_SYSTEM_NODE=true" >> $GITHUB_ENV
 
-      # Authenticate to Salesforce
-      - name: Authenticate to Salesforce
-        run: |
-          echo "${{ secrets.SFDX_AUTH_URL }}" > sfdx-auth-url.txt
-          sfdx auth:sfdxurl:store --sfdx-url-file sfdx-auth-url.txt -a qa-org -d
+        - name: Install Salesforce CLI
+          run: |
+            npm install -g sfdx-cli
 
-      # Install sfdx-git-delta using system Node 20
-      - name: Install sfdx-git-delta
-        run: |
-          SF_USE_SYSTEM_NODE=true echo y | sf plugins install sfdx-git-delta
+        - name: Install sfdx-git-delta
+          run: echo y | sf plugins install sfdx-git-delta
+
 
       # Generate Delta Package
       - name: Generate Delta Package
