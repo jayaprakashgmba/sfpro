@@ -17,9 +17,6 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Force Salesforce CLI to use system Node
-        run: echo "SF_USE_SYSTEM_NODE=true" >> $GITHUB_ENV
-
       - name: Set up Salesforce CLI
         uses: sfdx-actions/setup-sfdx@v1
         with:
@@ -30,12 +27,16 @@ jobs:
           echo "${{ secrets.SFDX_AUTH_URL }}" > sfdx-auth-url.txt
           sfdx auth:sfdxurl:store --sfdx-url-file sfdx-auth-url.txt -a qa-org -d
 
-      - name: Install sfdx-git-delta and Generate Delta & Rollback Packages
+      - name: Install sfdx-git-delta
         run: |
+          # Ensure Salesforce CLI uses system Node (Node 20)
+          export SF_USE_SYSTEM_NODE=true
           echo y | sf plugins install sfdx-git-delta
-          # Generate deploy package (changes)
+
+      - name: Generate Delta & Rollback Packages
+        run: |
+          export SF_USE_SYSTEM_NODE=true
           sf sgd:source:delta --to "HEAD" --from "HEAD~1" --output "delta" --ignore .github/workflows/ignore.txt
-          # Generate rollback package (reverse changes)
           sf sgd:source:delta --to "HEAD~1" --from "HEAD" --output "rollback" --ignore .github/workflows/ignore.txt
           echo "Rollback package generated ✅"
 
@@ -47,6 +48,7 @@ jobs:
 
       - name: Validate Metadata (check-only)
         run: |
+          export SF_USE_SYSTEM_NODE=true
           sfdx force:source:deploy \
             --checkonly \
             --manifest delta/package/package.xml \
@@ -89,9 +91,6 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Force Salesforce CLI to use system Node
-        run: echo "SF_USE_SYSTEM_NODE=true" >> $GITHUB_ENV
-
       - name: Set up Salesforce CLI
         uses: sfdx-actions/setup-sfdx@v1
         with:
@@ -104,6 +103,7 @@ jobs:
 
       - name: Deploy Metadata to QA
         run: |
+          export SF_USE_SYSTEM_NODE=true
           sfdx force:source:deploy \
             --manifest delta/package/package.xml \
             --targetusername qa-org \
@@ -125,9 +125,6 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Force Salesforce CLI to use system Node
-        run: echo "SF_USE_SYSTEM_NODE=true" >> $GITHUB_ENV
-
       - name: Set up Salesforce CLI
         uses: sfdx-actions/setup-sfdx@v1
         with:
@@ -140,6 +137,7 @@ jobs:
 
       - name: Rollback Deployment
         run: |
+          export SF_USE_SYSTEM_NODE=true
           echo "🚨 Deployment failed — running rollback..."
           sfdx force:source:deploy \
             --manifest rollback/package/package.xml \
