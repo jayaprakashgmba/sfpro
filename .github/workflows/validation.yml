@@ -1,6 +1,6 @@
 name: Deploy to Salesforce (src format)
 
-on:
+off:
   pull_request:
     branches:
       - main
