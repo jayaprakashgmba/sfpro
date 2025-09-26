@@ -32,7 +32,7 @@ jobs:
           echo "Rollback package generated ✅"
 
       - name: Upload rollback artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: rollback-package
           path: rollback/
@@ -75,7 +75,7 @@ jobs:
     if: failure()   # 🚨 Auto-run only if deploy fails
     steps:
       - name: Download rollback artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: rollback-package
           path: rollback/
