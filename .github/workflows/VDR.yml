@@ -19,31 +19,34 @@ jobs:
         with:
           node-version: '20'
 
-      # Force Salesforce CLI to use system Node for all steps
+      # Force Salesforce CLI to use system Node
       - name: Use system Node for Salesforce CLI
         run: echo "SF_USE_SYSTEM_NODE=true" >> $GITHUB_ENV
 
-      # Install Salesforce CLI via npm
+      # Install Salesforce CLI globally via npm and add global binaries to PATH
       - name: Install Salesforce CLI
-        run: npm install -g sfdx-cli
+        run: |
+          npm install -g sfdx-cli
+          echo "PATH=$(npm bin -g):$PATH" >> $GITHUB_ENV
+          sf --version
 
       # Authenticate to Salesforce
       - name: Authenticate to Salesforce
         run: |
           echo "${{ secrets.SFDX_AUTH_URL }}" > sfdx-auth-url.txt
-          npx sf auth:sfdxurl:store --sfdx-url-file sfdx-auth-url.txt -a qa-org -d
+          sf auth:sfdxurl:store --sfdx-url-file sfdx-auth-url.txt -a qa-org -d
 
       # Install sfdx-git-delta plugin
       - name: Install sfdx-git-delta
-        run: npx sf plugins install sfdx-git-delta
+        run: echo y | sf plugins install sfdx-git-delta
 
       # Generate Delta Package
       - name: Generate Delta Package
-        run: npx sf sgd:source:delta --to "HEAD" --from "HEAD~1" --output "delta" --ignore .github/workflows/ignore.txt
+        run: sf sgd:source:delta --to "HEAD" --from "HEAD~1" --output "delta" --ignore .github/workflows/ignore.txt
 
       # Validate Metadata (check-only)
       - name: Validate Metadata
-        run: npx sf force:source:deploy \
+        run: sf force:source:deploy \
               --checkonly \
               --manifest delta/package/package.xml \
               --targetusername qa-org \
@@ -51,7 +54,7 @@ jobs:
 
       # Deploy Metadata to QA
       - name: Deploy Metadata to QA
-        run: npx sf force:source:deploy \
+        run: sf force:source:deploy \
               --manifest delta/package/package.xml \
               --targetusername qa-org \
               --testlevel RunLocalTests
