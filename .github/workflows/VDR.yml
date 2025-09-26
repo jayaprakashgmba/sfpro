@@ -17,6 +17,9 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Force Salesforce CLI to use system Node
+        run: echo "SF_USE_SYSTEM_NODE=true" >> $GITHUB_ENV
+
       - name: Set up Salesforce CLI
         uses: sfdx-actions/setup-sfdx@v1
         with:
@@ -86,6 +89,9 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Force Salesforce CLI to use system Node
+        run: echo "SF_USE_SYSTEM_NODE=true" >> $GITHUB_ENV
+
       - name: Set up Salesforce CLI
         uses: sfdx-actions/setup-sfdx@v1
         with:
@@ -118,6 +124,9 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '20'
+
+      - name: Force Salesforce CLI to use system Node
+        run: echo "SF_USE_SYSTEM_NODE=true" >> $GITHUB_ENV
 
       - name: Set up Salesforce CLI
         uses: sfdx-actions/setup-sfdx@v1
